@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Daftar - YT Shorts Automation{% endblock %}
+
+{% block public_content %}
+<div class="auth-page">
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="text-center mb-4">
+                <i class="bi bi-play-btn-fill text-danger" style="font-size: 2.5rem;"></i>
+                <h4 class="fw-bold mt-2">Buat Akun Baru</h4>
+                <p class="text-muted">Daftar gratis dan mulai buat video otomatis</p>
+            </div>
+            
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-sm" role="alert">
+                        {{ message }}
+                    </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            
+            <form method="POST" action="{{ url_for('auth.register') }}">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Username</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-person"></i></span>
+                        <input type="text" class="form-control" name="username" 
+                               placeholder="Pilih username (min. 3 karakter)" required minlength="3">
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Email</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                        <input type="email" class="form-control" name="email" 
+                               placeholder="contoh@email.com" required>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Password</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                        <input type="password" class="form-control" name="password" 
+                               placeholder="Min. 6 karakter" required minlength="6">
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="form-label fw-semibold">Konfirmasi Password</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
+                        <input type="password" class="form-control" name="confirm_password" 
+                               placeholder="Ulangi password" required>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn btn-danger w-100 py-2 fw-semibold">
+                    <i class="bi bi-rocket-takeoff me-2"></i>Daftar Sekarang
+                </button>
+            </form>
+            
+            <div class="text-center mt-4">
+                <p class="text-muted">
+                    Sudah punya akun? 
+                    <a href="{{ url_for('auth.login') }}" class="text-danger fw-semibold">Login</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

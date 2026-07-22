@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block title %}YT Shorts Automation - Buat Video YouTube Otomatis{% endblock %}
+
+{% block public_content %}
+<div class="landing-page">
+    <!-- Hero Section -->
+    <div class="hero-section">
+        <nav class="navbar navbar-dark px-4 py-3">
+            <div class="container-fluid">
+                <a class="navbar-brand d-flex align-items-center" href="/">
+                    <i class="bi bi-play-btn-fill text-danger fs-3 me-2"></i>
+                    <span class="fw-bold">YT Shorts Automation</span>
+                </a>
+                <div class="d-flex gap-2">
+                    <a href="{{ url_for('auth.login') }}" class="btn btn-outline-light">Login</a>
+                    <a href="{{ url_for('auth.register') }}" class="btn btn-danger">Daftar Gratis</a>
+                </div>
+            </div>
+        </nav>
+        
+        <div class="container text-center py-5">
+            <div class="row justify-content-center">
+                <div class="col-lg-8">
+                    <h1 class="display-3 fw-bold mb-4">
+                        Buat Video YouTube Shorts
+                        <span class="text-danger">Otomatis</span> 
+                        dengan AI
+                    </h1>
+                    <p class="lead text-muted mb-5">
+                        Generate script, buat video dengan voiceover AI berkualitas tinggi, 
+                        dan upload otomatis ke YouTube. Semua dalam satu platform <strong>GRATIS</strong>.
+                    </p>
+                    <div class="d-flex gap-3 justify-content-center flex-wrap">
+                        <a href="{{ url_for('auth.register') }}" class="btn btn-danger btn-lg px-5 py-3">
+                            <i class="bi bi-rocket-takeoff me-2"></i>Mulai Sekarang - Gratis!
+                        </a>
+                        <a href="#features" class="btn btn-outline-light btn-lg px-5 py-3">
+                            <i class="bi bi-arrow-down me-2"></i>Lihat Fitur
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Features Section -->
+    <section id="features" class="py-5">
+        <div class="container">
+            <h2 class="text-center fw-bold mb-5">Fitur Lengkap & Gratis</h2>
+            
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <div class="feature-card">
+                        <div class="feature-icon bg-danger">
+                            <i class="bi bi-pencil-square"></i>
+                        </div>
+                        <h5 class="fw-bold">Auto Script Generator</h5>
+                        <p class="text-muted">Generate script viral untuk berbagai niche: motivasi, fakta, teknologi, kesehatan, dan lainnya.</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="feature-card">
+                        <div class="feature-icon bg-primary">
+                            <i class="bi bi-mic-fill"></i>
+                        </div>
+                        <h5 class="fw-bold">AI Voiceover (Free)</h5>
+                        <p class="text-muted">Text-to-Speech berkualitas tinggi dengan suara natural. Mendukung Bahasa Indonesia & English.</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="feature-card">
+                        <div class="feature-icon bg-success">
+                            <i class="bi bi-film"></i>
+                        </div>
+                        <h5 class="fw-bold">Video Creator Engine</h5>
+                        <p class="text-muted">Otomatis gabungkan stock footage gratis, voiceover, subtitle animasi, dan background music.</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="feature-card">
+                        <div class="feature-icon bg-warning">
+                            <i class="bi bi-upload"></i>
+                        </div>
+                        <h5 class="fw-bold">Auto Upload YouTube</h5>
+                        <p class="text-muted">Upload otomatis ke channel YouTube kamu dengan judul, deskripsi, dan hashtag yang optimal.</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="feature-card">
+                        <div class="feature-icon bg-info">
+                            <i class="bi bi-calendar-check"></i>
+                        </div>
+                        <h5 class="fw-bold">Scheduler</h5>
+                        <p class="text-muted">Jadwalkan pembuatan & upload video secara otomatis. Daily, weekly, atau custom.</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="feature-card">
+                        <div class="feature-icon bg-purple">
+                            <i class="bi bi-bar-chart-fill"></i>
+                        </div>
+                        <h5 class="fw-bold">Dashboard Analytics</h5>
+                        <p class="text-muted">Pantau performa video, tracking views, likes, dan growth channel kamu.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- How it Works -->
+    <section class="py-5 bg-dark-subtle">
+        <div class="container">
+            <h2 class="text-center fw-bold mb-5">Cara Kerja</h2>
+            <div class="row g-4 align-items-center">
+                <div class="col-md-3 text-center">
+                    <div class="step-number">1</div>
+                    <h6 class="fw-bold">Pilih Niche</h6>
+                    <p class="text-muted small">Pilih topik: motivasi, fakta, tech, dll</p>
+                </div>
+                <div class="col-md-3 text-center">
+                    <div class="step-number">2</div>
+                    <h6 class="fw-bold">Generate Script</h6>
+                    <p class="text-muted small">AI buat script viral otomatis</p>
+                </div>
+                <div class="col-md-3 text-center">
+                    <div class="step-number">3</div>
+                    <h6 class="fw-bold">Buat Video</h6>
+                    <p class="text-muted small">Video dibuat dengan voiceover & subtitle</p>
+                </div>
+                <div class="col-md-3 text-center">
+                    <div class="step-number">4</div>
+                    <h6 class="fw-bold">Auto Upload</h6>
+                    <p class="text-muted small">Langsung upload ke YouTube</p>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- CTA -->
+    <section class="py-5 text-center">
+        <div class="container">
+            <h2 class="fw-bold mb-3">Siap Membuat Konten Otomatis?</h2>
+            <p class="text-muted mb-4">Daftar gratis dan mulai buat video YouTube Shorts pertamamu!</p>
+            <a href="{{ url_for('auth.register') }}" class="btn btn-danger btn-lg px-5">
+                Daftar Sekarang <i class="bi bi-arrow-right ms-2"></i>
+            </a>
+        </div>
+    </section>
+    
+    <!-- Footer -->
+    <footer class="py-4 border-top">
+        <div class="container text-center">
+            <p class="text-muted mb-0">
+                <i class="bi bi-play-btn-fill text-danger"></i> 
+                YT Shorts Automation &copy; 2024 - Open Source & Free
+            </p>
+        </div>
+    </footer>
+</div>
+{% endblock %}

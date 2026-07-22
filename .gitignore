@@ -1,0 +1,38 @@
+# Environment
+.env
+venv/
+env/
+*.pyc
+__pycache__/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+database/app.db
+
+# Uploads & Media
+uploads/videos/*
+uploads/thumbnails/*
+uploads/audio/*
+temp/*
+!uploads/videos/.gitkeep
+!uploads/thumbnails/.gitkeep
+!uploads/audio/.gitkeep
+
+# Logs
+logs/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# YouTube credentials
+client_secret*.json
+token.json

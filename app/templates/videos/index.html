@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Video Saya - YT Shorts Automation{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-1">Video Saya</h4>
+        <p class="text-muted mb-0">Kelola semua video yang telah dibuat</p>
+    </div>
+    <a href="{{ url_for('videos.create') }}" class="btn btn-danger">
+        <i class="bi bi-plus-lg me-1"></i> Buat Video Baru
+    </a>
+</div>
+
+<!-- Filters -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" class="row g-2 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label small text-muted">Filter Status</label>
+                <select class="form-select form-select-sm" name="status" onchange="this.form.submit()">
+                    <option value="all" {% if status_filter == 'all' %}selected{% endif %}>Semua Status</option>
+                    <option value="draft" {% if status_filter == 'draft' %}selected{% endif %}>Draft</option>
+                    <option value="generating" {% if status_filter == 'generating' %}selected{% endif %}>Generating</option>
+                    <option value="ready" {% if status_filter == 'ready' %}selected{% endif %}>Ready</option>
+                    <option value="uploaded" {% if status_filter == 'uploaded' %}selected{% endif %}>Uploaded</option>
+                    <option value="failed" {% if status_filter == 'failed' %}selected{% endif %}>Failed</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small text-muted">Filter Niche</label>
+                <select class="form-select form-select-sm" name="niche" onchange="this.form.submit()">
+                    <option value="all" {% if niche_filter == 'all' %}selected{% endif %}>Semua Niche</option>
+                    {% for key, niche in niches.items() %}
+                    <option value="{{ key }}" {% if niche_filter == key %}selected{% endif %}>{{ niche.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Video Grid -->
+{% if videos.items %}
+<div class="row g-3">
+    {% for video in videos.items %}
+    <div class="col-6 col-md-4 col-lg-3">
+        <div class="video-card">
+            <a href="{{ url_for('videos.detail', video_id=video.id) }}" class="text-decoration-none">
+                <div class="video-thumbnail">
+                    {% if video.thumbnail_path %}
+                    <img src="{{ url_for('videos.thumbnail', video_id=video.id) }}" alt="{{ video.title }}">
+                    {% else %}
+                    <div class="video-placeholder">
+                        <i class="bi bi-film"></i>
+                    </div>
+                    {% endif %}
+                    <span class="video-status badge bg-{{ video.status_badge }}">{{ video.status }}</span>
+                    {% if video.duration %}
+                    <span class="video-duration">{{ "%.0f"|format(video.duration) }}s</span>
+                    {% endif %}
+                </div>
+                <div class="video-info">
+                    <h6 class="video-title">{{ video.title[:50] }}{% if video.title|length > 50 %}...{% endif %}</h6>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted">{{ video.created_at.strftime('%d/%m/%Y') }}</small>
+                        {% if video.youtube_url %}
+                        <i class="bi bi-youtube text-danger"></i>
+                        {% endif %}
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Pagination -->
+{% if videos.pages > 1 %}
+<nav class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% if videos.has_prev %}
+        <li class="page-item">
+            <a class="page-link" href="{{ url_for('videos.index', page=videos.prev_num, status=status_filter, niche=niche_filter) }}">
+                <i class="bi bi-chevron-left"></i>
+            </a>
+        </li>
+        {% endif %}
+        {% for page_num in videos.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+            {% if page_num %}
+                <li class="page-item {% if page_num == videos.page %}active{% endif %}">
+                    <a class="page-link" href="{{ url_for('videos.index', page=page_num, status=status_filter, niche=niche_filter) }}">{{ page_num }}</a>
+                </li>
+            {% else %}
+                <li class="page-item disabled"><span class="page-link">...</span></li>
+            {% endif %}
+        {% endfor %}
+        {% if videos.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="{{ url_for('videos.index', page=videos.next_num, status=status_filter, niche=niche_filter) }}">
+                <i class="bi bi-chevron-right"></i>
+            </a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+{% else %}
+<div class="text-center py-5">
+    <i class="bi bi-film text-muted" style="font-size: 4rem;"></i>
+    <h5 class="mt-3">Belum Ada Video</h5>
+    <p class="text-muted">Mulai buat video YouTube Shorts pertamamu!</p>
+    <a href="{{ url_for('videos.create') }}" class="btn btn-danger">
+        <i class="bi bi-plus-lg me-1"></i> Buat Video Baru
+    </a>
+</div>
+{% endif %}
+{% endblock %}

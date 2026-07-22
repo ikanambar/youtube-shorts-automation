@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - YT Shorts Automation{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-1">Dashboard</h4>
+        <p class="text-muted mb-0">Selamat datang, <strong>{{ current_user.username }}</strong>! 👋</p>
+    </div>
+    <a href="{{ url_for('videos.create') }}" class="btn btn-danger">
+        <i class="bi bi-plus-lg me-1"></i> Buat Video Baru
+    </a>
+</div>
+
+<!-- Stats Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-danger-subtle text-danger">
+                <i class="bi bi-film"></i>
+            </div>
+            <div class="stat-info">
+                <h3 class="fw-bold mb-0">{{ stats.total_videos }}</h3>
+                <small class="text-muted">Total Video</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-success-subtle text-success">
+                <i class="bi bi-cloud-upload"></i>
+            </div>
+            <div class="stat-info">
+                <h3 class="fw-bold mb-0">{{ stats.uploaded_videos }}</h3>
+                <small class="text-muted">Diupload</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-info-subtle text-info">
+                <i class="bi bi-eye"></i>
+            </div>
+            <div class="stat-info">
+                <h3 class="fw-bold mb-0">{{ "{:,}".format(stats.total_views) }}</h3>
+                <small class="text-muted">Total Views</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-warning-subtle text-warning">
+                <i class="bi bi-calendar-check"></i>
+            </div>
+            <div class="stat-info">
+                <h3 class="fw-bold mb-0">{{ stats.active_schedules }}</h3>
+                <small class="text-muted">Jadwal Aktif</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions & Status -->
+<div class="row g-4 mb-4">
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h6 class="fw-bold mb-3"><i class="bi bi-lightning-fill text-warning me-2"></i>Quick Actions</h6>
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('videos.create') }}" class="btn btn-outline-danger">
+                        <i class="bi bi-plus-circle me-2"></i>Buat Video Baru
+                    </a>
+                    <a href="{{ url_for('schedule.create') }}" class="btn btn-outline-primary">
+                        <i class="bi bi-calendar-plus me-2"></i>Buat Jadwal
+                    </a>
+                    {% if not current_user.youtube_connected %}
+                    <a href="{{ url_for('youtube.settings') }}" class="btn btn-outline-success">
+                        <i class="bi bi-youtube me-2"></i>Hubungkan YouTube
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h6 class="fw-bold mb-3"><i class="bi bi-youtube text-danger me-2"></i>Status YouTube</h6>
+                {% if current_user.youtube_connected %}
+                <div class="d-flex align-items-center mb-3">
+                    <span class="status-dot bg-success"></span>
+                    <span class="fw-semibold">Connected</span>
+                </div>
+                <p class="text-muted small mb-0">
+                    <i class="bi bi-person-circle me-1"></i>
+                    Channel: <strong>{{ current_user.youtube_channel_name or 'N/A' }}</strong>
+                </p>
+                {% else %}
+                <div class="d-flex align-items-center mb-3">
+                    <span class="status-dot bg-danger"></span>
+                    <span class="fw-semibold text-muted">Not Connected</span>
+                </div>
+                <p class="text-muted small">Hubungkan akun YouTube untuk auto-upload video.</p>
+                <a href="{{ url_for('youtube.settings') }}" class="btn btn-sm btn-danger">
+                    Hubungkan Sekarang
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h6 class="fw-bold mb-3"><i class="bi bi-graph-up text-success me-2"></i>Minggu Ini</h6>
+                <div class="d-flex align-items-center mb-2">
+                    <span class="text-muted me-2">Video dibuat:</span>
+                    <span class="fw-bold">{{ stats.weekly_videos }}</span>
+                </div>
+                <div class="d-flex align-items-center mb-2">
+                    <span class="text-muted me-2">Menunggu upload:</span>
+                    <span class="fw-bold">{{ stats.pending_videos }}</span>
+                </div>
+                <div class="progress mt-3" style="height: 6px;">
+                    {% set progress = (stats.weekly_videos / 7 * 100) if stats.weekly_videos <= 7 else 100 %}
+                    <div class="progress-bar bg-success" style="width: {{ progress }}%"></div>
+                </div>
+                <small class="text-muted">{{ stats.weekly_videos }}/7 target mingguan</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Videos & Activity -->
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="fw-bold mb-0">Video Terbaru</h6>
+                <a href="{{ url_for('videos.index') }}" class="btn btn-sm btn-outline-secondary">Lihat Semua</a>
+            </div>
+            <div class="card-body p-0">
+                {% if recent_videos %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Judul</th>
+                                <th>Status</th>
+                                <th>Tanggal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for video in recent_videos %}
+                            <tr>
+                                <td>
+                                    <a href="{{ url_for('videos.detail', video_id=video.id) }}" class="text-decoration-none">
+                                        {{ video.title[:40] }}{% if video.title|length > 40 %}...{% endif %}
+                                    </a>
+                                </td>
+                                <td>
+                                    <span class="badge bg-{{ video.status_badge }}">{{ video.status }}</span>
+                                </td>
+                                <td>
+                                    <small class="text-muted">{{ video.created_at.strftime('%d/%m/%Y') }}</small>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="bi bi-film text-muted" style="font-size: 3rem;"></i>
+                    <p class="text-muted mt-2">Belum ada video. Buat video pertamamu!</p>
+                    <a href="{{ url_for('videos.create') }}" class="btn btn-danger btn-sm">Buat Video</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-5">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="fw-bold mb-0">Aktivitas Terbaru</h6>
+            </div>
+            <div class="card-body p-0">
+                {% if recent_activity %}
+                <div class="activity-list">
+                    {% for log in recent_activity %}
+                    <div class="activity-item">
+                        <div class="activity-dot bg-{{ log.status }}"></div>
+                        <div class="activity-content">
+                            <small class="fw-semibold">{{ log.action }}</small>
+                            <p class="text-muted small mb-0">{{ log.details[:50] }}{% if log.details and log.details|length > 50 %}...{% endif %}</p>
+                            <small class="text-muted">{{ log.created_at.strftime('%d/%m %H:%M') }}</small>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <p class="text-muted small">Belum ada aktivitas.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}YouTube Settings - YT Shorts Automation{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-1">Pengaturan YouTube</h4>
+        <p class="text-muted mb-0">Hubungkan akun YouTube untuk auto-upload</p>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <!-- Connection Status -->
+        <div class="card mb-4">
+            <div class="card-body text-center py-5">
+                {% if current_user.youtube_connected %}
+                <div class="youtube-connected">
+                    <i class="bi bi-youtube text-danger" style="font-size: 4rem;"></i>
+                    <h5 class="fw-bold mt-3">YouTube Terhubung!</h5>
+                    <p class="text-muted">Channel: <strong>{{ current_user.youtube_channel_name }}</strong></p>
+                    
+                    <div class="d-flex justify-content-center gap-2 mt-4">
+                        <span class="badge bg-success fs-6 px-3 py-2">
+                            <i class="bi bi-check-circle me-1"></i> Connected
+                        </span>
+                    </div>
+                    
+                    <form method="POST" action="{{ url_for('youtube.disconnect') }}" class="mt-4"
+                          onsubmit="return confirm('Yakin ingin memutuskan koneksi YouTube?');">
+                        <button type="submit" class="btn btn-outline-danger">
+                            <i class="bi bi-x-circle me-1"></i> Putuskan Koneksi
+                        </button>
+                    </form>
+                </div>
+                {% else %}
+                <div class="youtube-disconnected">
+                    <i class="bi bi-youtube text-muted" style="font-size: 4rem;"></i>
+                    <h5 class="fw-bold mt-3">YouTube Belum Terhubung</h5>
+                    <p class="text-muted">Hubungkan akun YouTube kamu untuk mengaktifkan auto-upload video.</p>
+                    
+                    <a href="{{ url_for('youtube.connect') }}" class="btn btn-danger btn-lg mt-3">
+                        <i class="bi bi-youtube me-2"></i>Hubungkan Akun YouTube
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Setup Instructions -->
+        <div class="card">
+            <div class="card-body">
+                <h6 class="fw-bold mb-3">
+                    <i class="bi bi-info-circle me-2"></i>Cara Setup YouTube API
+                </h6>
+                <ol class="mb-0">
+                    <li class="mb-2">Buka <a href="https://console.cloud.google.com" target="_blank">Google Cloud Console</a></li>
+                    <li class="mb-2">Buat project baru (atau pilih existing)</li>
+                    <li class="mb-2">Aktifkan <strong>YouTube Data API v3</strong></li>
+                    <li class="mb-2">Buat OAuth 2.0 Client ID credentials</li>
+                    <li class="mb-2">Tambahkan redirect URI: <code>{{ config.YOUTUBE_REDIRECT_URI }}</code></li>
+                    <li class="mb-2">Copy Client ID & Secret ke file <code>.env</code></li>
+                    <li>Restart aplikasi & klik "Hubungkan Akun YouTube"</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

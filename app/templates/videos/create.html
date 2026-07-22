@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+{% block title %}Buat Video - YT Shorts Automation{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-1">Buat Video Baru</h4>
+        <p class="text-muted mb-0">Generate script otomatis dan buat video YouTube Shorts</p>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Left: Form -->
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('videos.create') }}" id="createVideoForm">
+                    <!-- Niche Selection -->
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">
+                            <i class="bi bi-tag me-1"></i> Pilih Niche/Kategori
+                        </label>
+                        <div class="row g-2">
+                            {% for key, niche in niches.items() %}
+                            <div class="col-6 col-md-4">
+                                <input type="radio" class="btn-check" name="niche" 
+                                       id="niche_{{ key }}" value="{{ key }}" 
+                                       {% if key == 'motivational' %}checked{% endif %}>
+                                <label class="btn btn-outline-secondary w-100 py-2" for="niche_{{ key }}">
+                                    {{ niche.name }}
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <!-- Language -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">
+                            <i class="bi bi-translate me-1"></i> Bahasa
+                        </label>
+                        <select class="form-select" name="language" id="language">
+                            <option value="id" selected>Bahasa Indonesia</option>
+                            <option value="en">English</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Auto Generate Button -->
+                    <div class="mb-4">
+                        <button type="button" class="btn btn-outline-primary w-100" id="generateScriptBtn">
+                            <i class="bi bi-magic me-2"></i>Generate Script Otomatis
+                        </button>
+                    </div>
+                    
+                    <hr class="my-4">
+                    
+                    <!-- Title -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">
+                            <i class="bi bi-type-h1 me-1"></i> Judul Video
+                        </label>
+                        <input type="text" class="form-control" name="title" id="videoTitle"
+                               placeholder="Judul yang menarik untuk video Shorts" required maxlength="100">
+                        <small class="text-muted"><span id="titleCount">0</span>/100 karakter</small>
+                    </div>
+                    
+                    <!-- Script -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">
+                            <i class="bi bi-file-text me-1"></i> Script Narasi
+                        </label>
+                        <textarea class="form-control" name="script" id="videoScript" rows="6"
+                                  placeholder="Tulis script narasi untuk video... (atau gunakan Generate otomatis di atas)" 
+                                  required></textarea>
+                        <div class="d-flex justify-content-between mt-1">
+                            <small class="text-muted"><span id="scriptWordCount">0</span> kata</small>
+                            <small class="text-muted">~<span id="estimatedDuration">0</span> detik</small>
+                        </div>
+                    </div>
+                    
+                    <!-- Voice Selection -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">
+                            <i class="bi bi-mic me-1"></i> Suara AI
+                        </label>
+                        <select class="form-select" name="voice" id="voiceSelect">
+                            {% for key, name in voices.items() %}
+                            <option value="{{ key }}" {% if key == default_voice %}selected{% endif %}>
+                                {{ name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <!-- Options -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-6">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" name="include_music" 
+                                       id="includeMusic" checked>
+                                <label class="form-check-label" for="includeMusic">
+                                    <i class="bi bi-music-note me-1"></i> Background Music
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" name="include_subtitles" 
+                                       id="includeSubtitles" checked>
+                                <label class="form-check-label" for="includeSubtitles">
+                                    <i class="bi bi-badge-cc me-1"></i> Subtitle
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-danger btn-lg w-100">
+                        <i class="bi bi-film me-2"></i>Buat Video
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Right: Preview & Tips -->
+    <div class="col-lg-5">
+        <div class="card mb-3">
+            <div class="card-body">
+                <h6 class="fw-bold mb-3"><i class="bi bi-phone me-2"></i>Preview</h6>
+                <div class="phone-preview">
+                    <div class="phone-frame">
+                        <div class="phone-screen">
+                            <div class="preview-title" id="previewTitle">
+                                Judul video akan muncul di sini...
+                            </div>
+                            <div class="preview-subtitle" id="previewScript">
+                                Script narasi akan ditampilkan sebagai subtitle...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-body">
+                <h6 class="fw-bold mb-3"><i class="bi bi-lightbulb me-2 text-warning"></i>Tips</h6>
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-2">
+                        <i class="bi bi-check-circle text-success me-2"></i>
+                        <small>Hook di 3 detik pertama = retention tinggi</small>
+                    </li>
+                    <li class="mb-2">
+                        <i class="bi bi-check-circle text-success me-2"></i>
+                        <small>Durasi ideal: 30-50 detik</small>
+                    </li>
+                    <li class="mb-2">
+                        <i class="bi bi-check-circle text-success me-2"></i>
+                        <small>Akhiri dengan CTA (follow/like/share)</small>
+                    </li>
+                    <li class="mb-2">
+                        <i class="bi bi-check-circle text-success me-2"></i>
+                        <small>Gunakan hashtag yang relevan</small>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Generate Script
+document.getElementById('generateScriptBtn').addEventListener('click', async function() {
+    const btn = this;
+    const niche = document.querySelector('input[name="niche"]:checked').value;
+    const language = document.getElementById('language').value;
+    
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Generating...';
+    
+    try {
+        const response = await fetch('/api/generate-script', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({niche, language})
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            document.getElementById('videoTitle').value = data.title;
+            document.getElementById('videoScript').value = data.script;
+            updateCounts();
+            updatePreview();
+        } else {
+            alert('Gagal generate: ' + (data.error || 'Unknown error'));
+        }
+    } catch (e) {
+        alert('Error: ' + e.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-magic me-2"></i>Generate Script Otomatis';
+    }
+});
+
+// Character/word counters
+function updateCounts() {
+    const title = document.getElementById('videoTitle').value;
+    const script = document.getElementById('videoScript').value;
+    
+    document.getElementById('titleCount').textContent = title.length;
+    
+    const words = script.trim().split(/\s+/).filter(w => w.length > 0).length;
+    document.getElementById('scriptWordCount').textContent = words;
+    document.getElementById('estimatedDuration').textContent = Math.round(words / 2.5); // ~150 wpm
+}
+
+function updatePreview() {
+    const title = document.getElementById('videoTitle').value || 'Judul video akan muncul di sini...';
+    const script = document.getElementById('videoScript').value || 'Script narasi akan ditampilkan sebagai subtitle...';
+    
+    document.getElementById('previewTitle').textContent = title;
+    document.getElementById('previewScript').textContent = script.substring(0, 100) + (script.length > 100 ? '...' : '');
+}
+
+document.getElementById('videoTitle').addEventListener('input', () => { updateCounts(); updatePreview(); });
+document.getElementById('videoScript').addEventListener('input', () => { updateCounts(); updatePreview(); });
+</script>
+{% endblock %}

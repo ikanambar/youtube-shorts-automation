@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Profil - YT Shorts Automation{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="fw-bold mb-0">Profil Saya</h4>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-body">
+                <h6 class="fw-bold mb-3">Informasi Akun</h6>
+                <div class="mb-3">
+                    <label class="form-label text-muted small">Username</label>
+                    <p class="fw-semibold">{{ current_user.username }}</p>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label text-muted small">Email</label>
+                    <p class="fw-semibold">{{ current_user.email }}</p>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label text-muted small">Bergabung Sejak</label>
+                    <p class="fw-semibold">{{ current_user.created_at.strftime('%d %B %Y') }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-body">
+                <h6 class="fw-bold mb-3">Koneksi YouTube</h6>
+                {% if current_user.youtube_connected %}
+                <div class="alert alert-success d-flex align-items-center">
+                    <i class="bi bi-check-circle-fill me-2"></i>
+                    YouTube terhubung
+                </div>
+                <p><strong>Channel:</strong> {{ current_user.youtube_channel_name }}</p>
+                <p><strong>Channel ID:</strong> <code>{{ current_user.youtube_channel_id }}</code></p>
+                {% else %}
+                <div class="alert alert-warning d-flex align-items-center">
+                    <i class="bi bi-exclamation-circle-fill me-2"></i>
+                    YouTube belum terhubung
+                </div>
+                <a href="{{ url_for('youtube.settings') }}" class="btn btn-danger">
+                    <i class="bi bi-youtube me-2"></i>Hubungkan YouTube
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
