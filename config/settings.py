@@ -9,6 +9,30 @@ load_dotenv()
 # Base directory
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Ensure the database directory exists and build a robust absolute SQLite path.
+# Using an absolute path with forward slashes avoids Windows "unable to open
+# database file" errors caused by relative paths or backslash escaping.
+_DB_DIR = BASE_DIR / 'database'
+_DB_DIR.mkdir(parents=True, exist_ok=True)
+_DEFAULT_DB_URI = f"sqlite:///{(_DB_DIR / 'app.db').as_posix()}"
+
+
+def _resolve_database_uri() -> str:
+    """Resolve the database URI, normalizing relative SQLite paths to absolute."""
+    uri = os.getenv('DATABASE_URL', '').strip()
+    if not uri:
+        return _DEFAULT_DB_URI
+    # Normalize a relative sqlite path (e.g. sqlite:///database/app.db) to absolute
+    if uri.startswith('sqlite:///') and not uri.startswith('sqlite:////'):
+        rel = uri[len('sqlite:///'):]
+        # If it's not already an absolute Windows/Unix path, resolve against BASE_DIR
+        if not (len(rel) > 1 and rel[1] == ':') and not rel.startswith('/'):
+            abs_path = (BASE_DIR / rel).resolve()
+            abs_path.parent.mkdir(parents=True, exist_ok=True)
+            return f"sqlite:///{abs_path.as_posix()}"
+    return uri
+
+
 class Config:
     """Base configuration."""
     
@@ -17,13 +41,13 @@ class Config:
     DEBUG = os.getenv('FLASK_DEBUG', 'True').lower() == 'true'
     
     # Database
-    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL', f'sqlite:///{BASE_DIR}/database/app.db')
+    SQLALCHEMY_DATABASE_URI = _resolve_database_uri()
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # YouTube API
     YOUTUBE_CLIENT_ID = os.getenv('YOUTUBE_CLIENT_ID', '')
     YOUTUBE_CLIENT_SECRET = os.getenv('YOUTUBE_CLIENT_SECRET', '')
-    YOUTUBE_REDIRECT_URI = os.getenv('YOUTUBE_REDIRECT_URI', 'http://localhost:5000/auth/youtube/callback')
+    YOUTUBE_REDIRECT_URI = os.getenv('YOUTUBE_REDIRECT_URI', 'http://localhost:5000/youtube/callback')
     YOUTUBE_SCOPES = [
         'https://www.googleapis.com/auth/youtube.upload',
         'https://www.googleapis.com/auth/youtube',
