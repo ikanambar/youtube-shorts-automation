@@ -39,5 +39,6 @@ aiohttp==3.9.1
 aiofiles==23.2.1
 
 # Image/Video Download
-yt-dlp==2023.11.16
+# yt-dlp must be kept up to date to work with current YouTube (run: pip install -U yt-dlp)
+yt-dlp>=2025.1.15
 httpx==0.25.2
