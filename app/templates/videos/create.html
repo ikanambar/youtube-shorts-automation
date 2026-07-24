@@ -52,7 +52,7 @@
                         </label>
                         <div class="row g-2">
                             {% set styles = [
-                                ('real_video', '🎬 Real Video', 'Video nyata HD (stock footage)'),
+                                ('real_video', '🎬 Real Video', 'Klip video asli dari seluruh internet (YouTube)'),
                                 ('cinematic_ai', '🎨 Cinematic AI', 'Sinematik dramatis (AI)'),
                                 ('anime', '🌸 Anime', 'Gaya anime Jepang (AI)'),
                                 ('cartoon', '🖍️ Kartun', 'Gaya kartun 3D (AI)'),
@@ -76,7 +76,10 @@
                             {% endfor %}
                         </div>
                         <small class="text-muted d-block mt-1" id="styleHint">
-                            <i class="bi bi-info-circle me-1"></i>Real Video = video nyata dari stock footage, cocok per kalimat narasi.
+                            <i class="bi bi-info-circle me-1"></i>Real Video = klip video asli dari seluruh internet (YouTube), dicari per adegan berdasarkan prompt & narasi.
+                        </small>
+                        <small class="text-warning d-block mt-1">
+                            <i class="bi bi-exclamation-triangle me-1"></i>Klip internet bisa berhak cipta &mdash; gunakan bijak untuk hindari klaim/strike di YouTube.
                         </small>
                     </div>
 
@@ -278,7 +281,7 @@ document.getElementById('videoScript').addEventListener('input', () => { updateC
 
 // Visual style hints
 const styleHints = {
-    'real_video': 'Real Video = video nyata dari stock footage Pexels, dicocokkan per kalimat narasi.',
+    'real_video': 'Real Video = klip video asli dari seluruh internet (YouTube: film, kejadian, anime, dll), dicari per adegan. Isi Custom Prompt untuk mengarahkan tema visual.',
     'cinematic_ai': 'Cinematic AI = gambar sinematik dramatis dibuat AI, cocok dengan narasi.',
     'anime': 'Anime = gaya ilustrasi anime Jepang, dibuat AI sesuai narasi.',
     'cartoon': 'Kartun = gaya animasi kartun 3D warna-warni, dibuat AI.',

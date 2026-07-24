@@ -72,20 +72,33 @@ def generate_video_task(video_id: int) -> str:
             video.duration = audio_duration
             db.session.commit()
 
-            # Step 2: Fetch media matching narration (hybrid: stock video or AI images)
+            # Step 2: Fetch media matching narration
             visual_style = getattr(video, 'visual_style', None) or 'real_video'
             custom_prompt = getattr(video, 'custom_prompt', None) or ''
             logger.info(f"Step 2: Fetching media (style={visual_style})...")
             fetcher = MediaFetcher()
             clips_needed = max(3, int(audio_duration / 6))
 
-            media_paths = fetcher.fetch_media_for_script(
-                script=video.script,
-                niche=video.niche or 'facts',
-                visual_style=visual_style,
-                custom_prompt=custom_prompt,
-                count=clips_needed
-            )
+            if visual_style == 'real_video':
+                # Real video: search the whole internet (YouTube) per scene,
+                # driven by the custom prompt + narration content.
+                from modules.internet_video import InternetVideoFetcher
+                ivf = InternetVideoFetcher()
+                media_paths = ivf.fetch_clips_for_script(
+                    script=video.script,
+                    custom_prompt=custom_prompt,
+                    niche=video.niche or 'facts',
+                    count=clips_needed
+                )
+            else:
+                # Artistic styles: AI-generated images via Pollinations
+                media_paths = fetcher.fetch_media_for_script(
+                    script=video.script,
+                    niche=video.niche or 'facts',
+                    visual_style=visual_style,
+                    custom_prompt=custom_prompt,
+                    count=clips_needed
+                )
 
             # Final fallback if everything failed
             if not media_paths:
