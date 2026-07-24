@@ -72,21 +72,24 @@ def generate_video_task(video_id: int) -> str:
             video.duration = audio_duration
             db.session.commit()
 
-            # Step 2: Fetch AI-generated images matching narration
-            logger.info("Step 2: Generating AI images matching narration...")
+            # Step 2: Fetch media matching narration (hybrid: stock video or AI images)
+            visual_style = getattr(video, 'visual_style', None) or 'real_video'
+            custom_prompt = getattr(video, 'custom_prompt', None) or ''
+            logger.info(f"Step 2: Fetching media (style={visual_style})...")
             fetcher = MediaFetcher()
             clips_needed = max(3, int(audio_duration / 6))
 
-            # Use AI image generation (Pollinations.ai) for perfect narration match
-            media_paths = fetcher.fetch_ai_images_for_script(
+            media_paths = fetcher.fetch_media_for_script(
                 script=video.script,
                 niche=video.niche or 'facts',
+                visual_style=visual_style,
+                custom_prompt=custom_prompt,
                 count=clips_needed
             )
 
-            # Fallback to stock footage if AI generation fails
+            # Final fallback if everything failed
             if not media_paths:
-                logger.warning("AI image generation failed, falling back to stock footage")
+                logger.warning("Media fetch failed, falling back to generic stock images")
                 niche_keywords = video.hashtags or '["nature", "cinematic"]'
                 try:
                     keywords_list = json.loads(niche_keywords)

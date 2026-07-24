@@ -55,9 +55,34 @@ def create_app(config_class=Config):
     # Create database tables
     with app.app_context():
         db.create_all()
+        _migrate_schema()
         _seed_templates()
     
     return app
+
+
+def _migrate_schema():
+    """Lightweight auto-migration: add new columns to existing SQLite DB."""
+    from sqlalchemy import text, inspect
+    from database.models import db
+
+    try:
+        inspector = inspect(db.engine)
+        existing_columns = [c['name'] for c in inspector.get_columns('videos')]
+
+        # Columns to add if missing: (name, SQL definition)
+        new_columns = [
+            ('visual_style', "VARCHAR(50) DEFAULT 'real_video'"),
+            ('custom_prompt', "TEXT"),
+        ]
+
+        for col_name, col_def in new_columns:
+            if col_name not in existing_columns:
+                db.session.execute(text(f"ALTER TABLE videos ADD COLUMN {col_name} {col_def}"))
+                db.session.commit()
+    except Exception:
+        # If migration fails, continue (fresh DB already has columns from create_all)
+        db.session.rollback()
 
 
 def _seed_templates():

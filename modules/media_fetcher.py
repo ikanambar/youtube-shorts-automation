@@ -1,20 +1,21 @@
 """
 Media Fetcher Module
 ====================
-Fetches AI-generated images from Pollinations.ai that match narration per-sentence.
-Falls back to Pexels/Pixabay stock footage if AI generation fails.
+Hybrid media sourcing for video creation:
 
-Strategy:
-1. Split script into sentences
-2. Generate AI image prompts per sentence (cinematic, matching content)
-3. Download AI-generated images from Pollinations.ai (FREE, no API key)
-4. Fallback: stock footage from Pexels/Pixabay
+1. REAL VIDEO style  -> Smart per-sentence stock video from Pexels/Pixabay
+2. ARTISTIC styles   -> AI image generation via Pollinations.ai
+   (cinematic_ai, anime, cartoon, illustration, graphic_art, 3d_render,
+    oil_painting, watercolor, custom)
+
+Key feature: Uses Pollinations Text AI (FREE) to convert Indonesian narration
+into accurate English search keywords / image prompts, so visuals truly match
+what is being narrated.
 """
 import os
 import re
 import random
 import hashlib
-import time
 import httpx
 from pathlib import Path
 from typing import List, Optional, Dict
@@ -23,26 +24,31 @@ from config.settings import Config
 from loguru import logger
 
 
+# Visual styles that use AI image generation (everything except real_video)
+AI_STYLES = {
+    'cinematic_ai', 'anime', 'cartoon', 'illustration',
+    'graphic_art', '3d_render', 'oil_painting', 'watercolor', 'custom'
+}
+
+# Style-specific prompt modifiers appended to every AI image prompt
+STYLE_MODIFIERS = {
+    'cinematic_ai': 'cinematic film still, dramatic lighting, movie scene, 8k, highly detailed, professional color grading, depth of field',
+    'anime': 'anime style, studio ghibli inspired, vibrant colors, detailed anime illustration, cel shading, high quality anime art',
+    'cartoon': 'cartoon style, pixar 3d animation style, colorful, playful, clean render, high quality',
+    'illustration': 'digital illustration, detailed artwork, artstation trending, concept art, beautiful lighting, painterly',
+    'graphic_art': 'bold graphic design, poster art, flat design, vector style, striking composition, modern aesthetic',
+    '3d_render': '3d render, octane render, unreal engine, ultra realistic, volumetric lighting, 8k',
+    'oil_painting': 'oil painting, classical fine art, textured brushstrokes, masterpiece, rich colors',
+    'watercolor': 'watercolor painting, soft washes, artistic, delicate, hand painted, flowing colors',
+    'custom': '',  # custom uses only the user's prompt
+}
+
+
 class MediaFetcher:
     """Fetches AI-generated or stock media for video creation."""
 
-    # Pollinations.ai - FREE, no API key needed
-    POLLINATIONS_URL = "https://image.pollinations.ai/prompt/{prompt}?width={width}&height={height}&model=flux&nologo=true&seed={seed}"
-
-    # Visual style suffix for consistent cinematic look
-    STYLE_SUFFIX = ", cinematic lighting, high quality, 4k, professional photography, dramatic atmosphere"
-
-    # Niche-specific visual themes
-    NICHE_THEMES = {
-        'motivational': 'epic sunrise, mountain peak, golden light, inspirational',
-        'facts': 'scientific visualization, educational, detailed, stunning',
-        'tech': 'futuristic technology, neon glow, digital, modern',
-        'nature': 'beautiful nature, national geographic style, vivid colors',
-        'history': 'historical painting style, dramatic, ancient, epic',
-        'health': 'healthy lifestyle, fitness, wellness, bright clean',
-        'finance': 'luxury, business, wealth, professional, modern office',
-        'psychology': 'abstract mind, brain visualization, ethereal, thoughtful',
-    }
+    POLLINATIONS_IMG_URL = "https://image.pollinations.ai/prompt/{prompt}?width={width}&height={height}&model=flux&nologo=true&enhance=true&seed={seed}"
+    POLLINATIONS_TEXT_URL = "https://text.pollinations.ai/{prompt}"
 
     def __init__(self):
         self.pexels_key = Config.PEXELS_API_KEY
@@ -50,377 +56,379 @@ class MediaFetcher:
         self.temp_dir = Config.TEMP_FOLDER
         self.temp_dir.mkdir(parents=True, exist_ok=True)
 
-    def fetch_ai_images_for_script(self, script: str, niche: str = 'facts', count: int = 5) -> List[str]:
-        """
-        Generate AI images that match the narration per-sentence.
+    # ==========================================================
+    # MAIN ENTRY POINT - Router
+    # ==========================================================
 
-        This is the PRIMARY method - generates images that perfectly match
-        what is being narrated in each part of the video.
+    def fetch_media_for_script(
+        self,
+        script: str,
+        niche: str = 'facts',
+        visual_style: str = 'real_video',
+        custom_prompt: str = '',
+        count: int = 5
+    ) -> List[str]:
+        """
+        Fetch media matching the narration, using the chosen visual style.
 
         Args:
-            script: The full narration script
-            niche: Content niche for visual style hints
-            count: Number of images needed
+            script: Full narration script
+            niche: Content niche (for keyword hints)
+            visual_style: real_video | cinematic_ai | anime | cartoon |
+                          illustration | graphic_art | 3d_render |
+                          oil_painting | watercolor | custom
+            custom_prompt: Extra user instruction for AI visuals
+            count: Number of media segments needed
 
         Returns:
-            List of local file paths to AI-generated images
+            List of local file paths (videos or images)
         """
-        # Split script into meaningful segments
-        segments = self._split_script_into_segments(script, count)
-        logger.info(f"Split script into {len(segments)} segments for AI image generation")
+        logger.info(f"Fetching media | style={visual_style} | niche={niche} | count={count}")
 
-        image_paths = []
-        niche_theme = self.NICHE_THEMES.get(niche, 'cinematic, dramatic, professional')
+        segments = self._split_script_into_segments(script, count)
+        logger.info(f"Split narration into {len(segments)} scenes")
+
+        if visual_style in AI_STYLES:
+            return self._fetch_ai_images(segments, visual_style, custom_prompt, niche)
+        else:
+            # real_video (default)
+            return self._fetch_smart_stock_videos(segments, niche)
+
+    # ==========================================================
+    # SMART STOCK VIDEO (real_video) - per-sentence matching
+    # ==========================================================
+
+    def _fetch_smart_stock_videos(self, segments: List[str], niche: str) -> List[str]:
+        """Find a matching stock VIDEO for each narration segment."""
+        paths = []
+        used_ids = set()
 
         for i, segment in enumerate(segments):
-            try:
-                # Create a visual prompt from the narration segment
-                visual_prompt = self._create_visual_prompt(segment, niche_theme)
-                logger.info(f"Segment {i+1}: '{segment[:50]}...' -> Prompt: '{visual_prompt[:80]}...'")
+            # Convert narration -> English search keywords via Pollinations Text AI
+            keywords = self._narration_to_keywords(segment, niche)
+            logger.info(f"Scene {i+1}: '{segment[:40]}...' -> keywords: '{keywords}'")
 
-                # Generate AI image
-                path = self._generate_pollinations_image(visual_prompt, i)
-                if path:
-                    image_paths.append(path)
-                else:
-                    logger.warning(f"AI generation failed for segment {i+1}, trying fallback")
-                    # Fallback: try stock image with extracted keywords
-                    keywords = self._extract_keywords(segment)
-                    fallback_paths = self._fetch_stock_images(keywords, 1)
-                    if fallback_paths:
-                        image_paths.extend(fallback_paths)
+            found = self._search_one_stock_video(keywords, used_ids)
+            if not found:
+                # Retry with simpler/broader keyword
+                broad = keywords.split()[0] if keywords else (niche or 'cinematic')
+                found = self._search_one_stock_video(broad, used_ids)
 
-            except Exception as e:
-                logger.warning(f"Failed to generate image for segment {i+1}: {e}")
-                continue
+            if found:
+                paths.append(found)
+            else:
+                # Fallback to an image for this scene
+                img = self._search_one_stock_image(keywords, used_ids)
+                if img:
+                    paths.append(img)
 
-        # If we got nothing, final fallback
-        if not image_paths:
-            logger.warning("All AI generation failed, falling back to stock footage")
-            keywords = self._extract_keywords(script)
-            image_paths = self._fetch_stock_images(keywords, count)
+        # Absolute fallback if nothing matched at all
+        if not paths:
+            logger.warning("Smart matching found nothing, using generic stock")
+            paths = self._search_stock_images_bulk(niche or 'cinematic nature', len(segments))
 
-        return image_paths
+        return paths
 
-    def fetch_videos(self, keywords: str, count: int = 5, orientation: str = 'portrait') -> List[str]:
-        """Legacy method - fetch stock videos. Kept for backward compatibility."""
-        video_paths = []
-
+    def _search_one_stock_video(self, keywords: str, used_ids: set) -> Optional[str]:
+        """Search Pexels then Pixabay for a single portrait video."""
+        # Pexels
         if self.pexels_key:
             try:
-                paths = self._fetch_pexels_videos(keywords, count, orientation)
-                video_paths.extend(paths)
-            except Exception as e:
-                logger.warning(f"Pexels video fetch failed: {e}")
+                url = "https://api.pexels.com/videos/search"
+                headers = {"Authorization": self.pexels_key}
+                params = {"query": keywords, "per_page": 8,
+                          "orientation": "portrait", "size": "medium"}
+                with httpx.Client(timeout=30) as client:
+                    r = client.get(url, headers=headers, params=params)
+                    r.raise_for_status()
+                    data = r.json()
 
-        if len(video_paths) < count and self.pixabay_key:
+                for video in data.get('videos', []):
+                    if video['id'] in used_ids:
+                        continue
+                    vf = self._pick_portrait_file(video.get('video_files', []))
+                    if vf:
+                        fp = self.temp_dir / f"pexels_video_{video['id']}.mp4"
+                        if not fp.exists():
+                            self._download_file(vf['link'], fp)
+                        used_ids.add(video['id'])
+                        return str(fp)
+            except Exception as e:
+                logger.warning(f"Pexels video search failed: {e}")
+
+        # Pixabay
+        if self.pixabay_key:
             try:
-                remaining = count - len(video_paths)
-                paths = self._fetch_pixabay_videos(keywords, remaining)
-                video_paths.extend(paths)
+                url = "https://pixabay.com/api/videos/"
+                params = {"key": self.pixabay_key, "q": keywords,
+                          "per_page": 8, "safesearch": "true"}
+                with httpx.Client(timeout=30) as client:
+                    r = client.get(url, params=params)
+                    r.raise_for_status()
+                    data = r.json()
+
+                for hit in data.get('hits', []):
+                    if hit['id'] in used_ids:
+                        continue
+                    videos = hit.get('videos', {})
+                    v = videos.get('medium', {}) or videos.get('small', {})
+                    if v.get('url'):
+                        fp = self.temp_dir / f"pixabay_video_{hit['id']}.mp4"
+                        if not fp.exists():
+                            self._download_file(v['url'], fp)
+                        used_ids.add(hit['id'])
+                        return str(fp)
             except Exception as e:
-                logger.warning(f"Pixabay video fetch failed: {e}")
+                logger.warning(f"Pixabay video search failed: {e}")
 
-        if not video_paths:
-            image_paths = self.fetch_images(keywords, count)
-            return image_paths
+        return None
 
-        return video_paths
+    def _pick_portrait_file(self, video_files: List[Dict]) -> Optional[Dict]:
+        """Choose a portrait HD video file, else first available."""
+        for vf in video_files:
+            h = vf.get('height', 0)
+            w = vf.get('width', 0)
+            if h >= 720 and w <= h:
+                return vf
+        return video_files[0] if video_files else None
 
-    def fetch_images(self, keywords: str, count: int = 5) -> List[str]:
-        """Legacy method - fetch stock images."""
-        return self._fetch_stock_images(keywords, count)
+    # ==========================================================
+    # AI IMAGE GENERATION (artistic styles)
+    # ==========================================================
 
-    # ==========================================
-    # AI IMAGE GENERATION (Pollinations.ai)
-    # ==========================================
+    def _fetch_ai_images(self, segments: List[str], style: str,
+                         custom_prompt: str, niche: str) -> List[str]:
+        """Generate an AI image per narration segment in the chosen style."""
+        paths = []
+        style_mod = STYLE_MODIFIERS.get(style, '')
+
+        for i, segment in enumerate(segments):
+            # Turn narration into a concise English visual description
+            visual_desc = self._narration_to_visual_description(segment, niche)
+
+            # Compose the final image prompt
+            parts = [visual_desc]
+            if custom_prompt:
+                parts.append(custom_prompt)
+            if style_mod:
+                parts.append(style_mod)
+            prompt = ", ".join([p for p in parts if p])
+
+            logger.info(f"Scene {i+1} [{style}] prompt: '{prompt[:90]}...'")
+
+            path = self._generate_pollinations_image(prompt, i)
+            if path:
+                paths.append(path)
+
+        # Fallback to stock images if AI failed entirely
+        if not paths:
+            logger.warning("AI generation failed, falling back to stock images")
+            paths = self._search_stock_images_bulk(niche or 'cinematic', len(segments))
+
+        return paths
 
     def _generate_pollinations_image(self, prompt: str, index: int) -> Optional[str]:
-        """
-        Generate an AI image using Pollinations.ai (FREE, no API key).
-
-        Args:
-            prompt: Visual description for image generation
-            index: Image index for unique filename
-
-        Returns:
-            Local file path or None if failed
-        """
-        # Create unique filename based on prompt
+        """Generate a single AI image via Pollinations.ai (FREE)."""
         prompt_hash = hashlib.md5(prompt.encode()).hexdigest()[:8]
         file_path = self.temp_dir / f"ai_img_{index}_{prompt_hash}.jpg"
 
-        # Skip if already generated
-        if file_path.exists() and file_path.stat().st_size > 1000:
+        if file_path.exists() and file_path.stat().st_size > 5000:
             return str(file_path)
 
-        # Build URL - portrait orientation for YouTube Shorts (1080x1920)
-        encoded_prompt = quote(prompt)
-        url = self.POLLINATIONS_URL.format(
-            prompt=encoded_prompt,
+        url = self.POLLINATIONS_IMG_URL.format(
+            prompt=quote(prompt),
             width=1080,
             height=1920,
             seed=random.randint(1, 999999)
         )
 
+        # Try twice in case of transient errors
+        for attempt in range(2):
+            try:
+                logger.info(f"Generating AI image {index+1} (attempt {attempt+1})...")
+                with httpx.Client(timeout=150, follow_redirects=True) as client:
+                    r = client.get(url)
+                    r.raise_for_status()
+                    ctype = r.headers.get('content-type', '')
+                    if 'image' in ctype or len(r.content) > 10000:
+                        with open(file_path, 'wb') as f:
+                            f.write(r.content)
+                        logger.info(f"AI image saved: {file_path} ({len(r.content)} bytes)")
+                        return str(file_path)
+            except Exception as e:
+                logger.warning(f"Pollinations image attempt {attempt+1} failed: {e}")
+
+        return None
+
+    # ==========================================================
+    # POLLINATIONS TEXT AI - narration -> keywords/description
+    # ==========================================================
+
+    def _narration_to_keywords(self, segment: str, niche: str) -> str:
+        """Convert a narration sentence into 2-3 English stock-video keywords."""
+        instruction = (
+            "Convert this sentence into exactly 3 simple English keywords for "
+            "searching stock footage. Return ONLY the keywords separated by spaces, "
+            "no punctuation, no explanation. Sentence: " + segment
+        )
+        result = self._pollinations_text(instruction)
+        if result:
+            # Clean up: keep words only, max 4
+            words = re.findall(r'[a-zA-Z]+', result)
+            words = [w for w in words if len(w) > 2][:4]
+            if words:
+                return ' '.join(words)
+        # Fallback: local keyword extraction
+        return self._extract_keywords_local(segment, niche)
+
+    def _narration_to_visual_description(self, segment: str, niche: str) -> str:
+        """Convert a narration sentence into a short English visual scene description."""
+        instruction = (
+            "Describe a single vivid visual scene (in English, max 15 words) that "
+            "would illustrate this narration. Return ONLY the description, no quotes. "
+            "Narration: " + segment
+        )
+        result = self._pollinations_text(instruction)
+        if result:
+            desc = result.strip().strip('"').replace('\n', ' ')
+            if 5 < len(desc) < 200:
+                return desc
+        # Fallback
+        return self._extract_keywords_local(segment, niche)
+
+    def _pollinations_text(self, prompt: str) -> Optional[str]:
+        """Call Pollinations Text AI (FREE). Returns generated text or None."""
         try:
-            logger.info(f"Generating AI image {index+1}...")
-            with httpx.Client(timeout=120, follow_redirects=True) as client:
-                response = client.get(url)
-                response.raise_for_status()
-
-                # Verify we got an image (not an error page)
-                content_type = response.headers.get('content-type', '')
-                if 'image' in content_type or len(response.content) > 10000:
-                    with open(file_path, 'wb') as f:
-                        f.write(response.content)
-                    logger.info(f"AI image generated: {file_path} ({len(response.content)} bytes)")
-                    return str(file_path)
-                else:
-                    logger.warning(f"Pollinations returned non-image response")
-                    return None
-
+            url = self.POLLINATIONS_TEXT_URL.format(prompt=quote(prompt))
+            with httpx.Client(timeout=45, follow_redirects=True) as client:
+                r = client.get(url)
+                r.raise_for_status()
+                text = r.text.strip()
+                if text and len(text) < 500:
+                    return text
         except Exception as e:
-            logger.warning(f"Pollinations image generation failed: {e}")
-            return None
+            logger.warning(f"Pollinations text failed: {e}")
+        return None
+
+    def _extract_keywords_local(self, text: str, niche: str) -> str:
+        """Local fallback keyword extraction (no network)."""
+        stop_words = {
+            'yang', 'dan', 'di', 'ke', 'dari', 'untuk', 'dengan', 'ini', 'itu',
+            'adalah', 'pada', 'tidak', 'akan', 'juga', 'sudah', 'bisa', 'lebih',
+            'kamu', 'kita', 'saya', 'karena', 'atau', 'tapi', 'saat', 'setiap',
+            'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'to', 'of', 'in',
+            'for', 'with', 'on', 'at', 'by', 'from', 'that', 'this', 'it',
+        }
+        niche_hint = {
+            'motivational': 'success motivation sunrise',
+            'facts': 'science discovery abstract',
+            'tech': 'technology digital futuristic',
+            'nature': 'nature landscape wildlife',
+            'history': 'ancient history monument',
+            'health': 'fitness healthy wellness',
+            'finance': 'money business finance',
+            'psychology': 'brain mind thinking',
+        }.get(niche, 'cinematic')
+
+        words = re.findall(r'\b[a-zA-Z]{3,}\b', text.lower())
+        keywords = [w for w in words if w not in stop_words][:3]
+        return ' '.join(keywords) if keywords else niche_hint
+
+    # ==========================================================
+    # SCRIPT SEGMENTATION
+    # ==========================================================
 
     def _split_script_into_segments(self, script: str, target_count: int) -> List[str]:
-        """
-        Split a script into meaningful segments for image generation.
-        Each segment represents a visual scene.
-        """
-        # Split by sentences
+        """Split script into scene segments (one visual per segment)."""
         sentences = re.split(r'[.!?]+', script)
-        sentences = [s.strip() for s in sentences if s.strip() and len(s.strip()) > 10]
+        sentences = [s.strip() for s in sentences if s.strip() and len(s.strip()) > 8]
 
         if not sentences:
-            return [script]
+            return [script] if script.strip() else ['cinematic scene']
 
-        # If we have more sentences than needed, group them
         if len(sentences) <= target_count:
             return sentences
 
-        # Group sentences into target_count segments
+        # Group evenly into target_count segments
         segments = []
-        sentences_per_segment = max(1, len(sentences) // target_count)
-
-        for i in range(0, len(sentences), sentences_per_segment):
-            segment = '. '.join(sentences[i:i + sentences_per_segment])
-            segments.append(segment)
+        per = max(1, len(sentences) // target_count)
+        for i in range(0, len(sentences), per):
+            segments.append('. '.join(sentences[i:i + per]))
             if len(segments) >= target_count:
                 break
-
         return segments[:target_count]
 
-    def _create_visual_prompt(self, text_segment: str, niche_theme: str) -> str:
-        """
-        Convert a narration text segment into a visual prompt for AI image generation.
+    # ==========================================================
+    # STOCK IMAGE HELPERS (fallback)
+    # ==========================================================
 
-        Strategy:
-        - Extract the key visual concept from the text
-        - Add cinematic style modifiers
-        - Add niche-specific theme
-        """
-        # Remove filler words and create visual description
-        # Take the core concept from the segment
-        clean_text = text_segment.strip()
-
-        # Limit prompt length (Pollinations works best with concise prompts)
-        if len(clean_text) > 150:
-            clean_text = clean_text[:150]
-
-        # Build the visual prompt
-        prompt = f"A stunning visual representation of: {clean_text}. Style: {niche_theme}{self.STYLE_SUFFIX}"
-
-        return prompt
-
-    def _extract_keywords(self, text: str) -> str:
-        """Extract search keywords from text for stock footage fallback."""
-        # Remove common words
-        stop_words = {'yang', 'dan', 'di', 'ke', 'dari', 'untuk', 'dengan', 'ini', 'itu',
-                      'adalah', 'pada', 'tidak', 'akan', 'juga', 'sudah', 'bisa', 'lebih',
-                      'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
-                      'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could',
-                      'should', 'may', 'might', 'can', 'shall', 'of', 'in', 'to', 'for',
-                      'with', 'on', 'at', 'by', 'from', 'that', 'this', 'it', 'its'}
-
-        words = re.findall(r'\b[a-zA-Z]{3,}\b', text.lower())
-        keywords = [w for w in words if w not in stop_words]
-
-        # Take top 5 most likely visual keywords
-        return ' '.join(keywords[:5]) if keywords else 'cinematic nature'
-
-    # ==========================================
-    # STOCK FOOTAGE FALLBACK (Pexels + Pixabay)
-    # ==========================================
-
-    def _fetch_stock_images(self, keywords: str, count: int) -> List[str]:
-        """Fetch stock images as fallback."""
-        image_paths = []
-
+    def _search_one_stock_image(self, keywords: str, used_ids: set) -> Optional[str]:
+        """Search a single portrait stock image."""
         if self.pexels_key:
             try:
-                paths = self._fetch_pexels_images(keywords, count)
-                image_paths.extend(paths)
+                url = "https://api.pexels.com/v1/search"
+                headers = {"Authorization": self.pexels_key}
+                params = {"query": keywords, "per_page": 8,
+                          "orientation": "portrait", "size": "medium"}
+                with httpx.Client(timeout=30) as client:
+                    r = client.get(url, headers=headers, params=params)
+                    r.raise_for_status()
+                    data = r.json()
+                for photo in data.get('photos', []):
+                    if photo['id'] in used_ids:
+                        continue
+                    img_url = photo['src'].get('portrait') or photo['src'].get('large')
+                    fp = self.temp_dir / f"pexels_img_{photo['id']}.jpg"
+                    if not fp.exists():
+                        self._download_file(img_url, fp)
+                    used_ids.add(photo['id'])
+                    return str(fp)
             except Exception as e:
-                logger.warning(f"Pexels image fetch failed: {e}")
+                logger.warning(f"Pexels image search failed: {e}")
+        return None
 
-        if len(image_paths) < count and self.pixabay_key:
-            try:
-                remaining = count - len(image_paths)
-                paths = self._fetch_pixabay_images(keywords, remaining)
-                image_paths.extend(paths)
-            except Exception as e:
-                logger.warning(f"Pixabay image fetch failed: {e}")
-
-        return image_paths
-
-    def _fetch_pexels_videos(self, keywords: str, count: int, orientation: str) -> List[str]:
-        """Fetch videos from Pexels API."""
-        url = "https://api.pexels.com/videos/search"
-        headers = {"Authorization": self.pexels_key}
-        params = {
-            "query": keywords,
-            "per_page": count,
-            "orientation": orientation,
-            "size": "medium"
-        }
-
-        with httpx.Client(timeout=30) as client:
-            response = client.get(url, headers=headers, params=params)
-            response.raise_for_status()
-            data = response.json()
-
+    def _search_stock_images_bulk(self, keywords: str, count: int) -> List[str]:
+        """Fetch several stock images at once (last-resort fallback)."""
         paths = []
-        for video in data.get('videos', [])[:count]:
-            video_files = video.get('video_files', [])
-
-            selected = None
-            for vf in video_files:
-                if vf.get('height', 0) >= 720 and vf.get('width', 0) <= vf.get('height', 0):
-                    selected = vf
-                    break
-
-            if not selected and video_files:
-                selected = video_files[0]
-
-            if selected:
-                video_url = selected['link']
-                file_path = self.temp_dir / f"pexels_video_{video['id']}.mp4"
-
-                if not file_path.exists():
-                    self._download_file(video_url, file_path)
-
-                paths.append(str(file_path))
-
+        used = set()
+        for _ in range(count):
+            img = self._search_one_stock_image(keywords, used)
+            if img:
+                paths.append(img)
+            else:
+                break
         return paths
 
-    def _fetch_pexels_images(self, keywords: str, count: int) -> List[str]:
-        """Fetch images from Pexels API."""
-        url = "https://api.pexels.com/v1/search"
-        headers = {"Authorization": self.pexels_key}
-        params = {
-            "query": keywords,
-            "per_page": count,
-            "orientation": "portrait",
-            "size": "medium"
-        }
+    # ==========================================================
+    # LEGACY METHODS (backward compatibility)
+    # ==========================================================
 
-        with httpx.Client(timeout=30) as client:
-            response = client.get(url, headers=headers, params=params)
-            response.raise_for_status()
-            data = response.json()
+    def fetch_videos(self, keywords: str, count: int = 5, orientation: str = 'portrait') -> List[str]:
+        """Legacy: bulk stock video search by keyword."""
+        segments = [keywords] * count
+        return self._fetch_smart_stock_videos(segments, 'facts')
 
-        paths = []
-        for photo in data.get('photos', [])[:count]:
-            img_url = photo['src'].get('portrait') or photo['src'].get('large')
-            file_path = self.temp_dir / f"pexels_img_{photo['id']}.jpg"
+    def fetch_images(self, keywords: str, count: int = 5) -> List[str]:
+        """Legacy: bulk stock image search by keyword."""
+        return self._search_stock_images_bulk(keywords, count)
 
-            if not file_path.exists():
-                self._download_file(img_url, file_path)
+    def fetch_ai_images_for_script(self, script: str, niche: str = 'facts', count: int = 5) -> List[str]:
+        """Legacy: AI image generation (cinematic style)."""
+        segments = self._split_script_into_segments(script, count)
+        return self._fetch_ai_images(segments, 'cinematic_ai', '', niche)
 
-            paths.append(str(file_path))
-
-        return paths
-
-    def _fetch_pixabay_videos(self, keywords: str, count: int) -> List[str]:
-        """Fetch videos from Pixabay API."""
-        url = "https://pixabay.com/api/videos/"
-        params = {
-            "key": self.pixabay_key,
-            "q": keywords,
-            "per_page": count,
-            "safesearch": "true",
-            "video_type": "film"
-        }
-
-        with httpx.Client(timeout=30) as client:
-            response = client.get(url, params=params)
-            response.raise_for_status()
-            data = response.json()
-
-        paths = []
-        for hit in data.get('hits', [])[:count]:
-            videos = hit.get('videos', {})
-            medium = videos.get('medium', {})
-            video_url = medium.get('url', '')
-
-            if not video_url:
-                small = videos.get('small', {})
-                video_url = small.get('url', '')
-
-            if video_url:
-                file_path = self.temp_dir / f"pixabay_video_{hit['id']}.mp4"
-
-                if not file_path.exists():
-                    self._download_file(video_url, file_path)
-
-                paths.append(str(file_path))
-
-        return paths
-
-    def _fetch_pixabay_images(self, keywords: str, count: int) -> List[str]:
-        """Fetch images from Pixabay API."""
-        url = "https://pixabay.com/api/"
-        params = {
-            "key": self.pixabay_key,
-            "q": keywords,
-            "per_page": count,
-            "safesearch": "true",
-            "image_type": "photo",
-            "orientation": "vertical"
-        }
-
-        with httpx.Client(timeout=30) as client:
-            response = client.get(url, params=params)
-            response.raise_for_status()
-            data = response.json()
-
-        paths = []
-        for hit in data.get('hits', [])[:count]:
-            img_url = hit.get('largeImageURL', hit.get('webformatURL'))
-
-            if img_url:
-                file_path = self.temp_dir / f"pixabay_img_{hit['id']}.jpg"
-
-                if not file_path.exists():
-                    self._download_file(img_url, file_path)
-
-                paths.append(str(file_path))
-
-        return paths
+    # ==========================================================
+    # UTILITIES
+    # ==========================================================
 
     def _download_file(self, url: str, path: Path) -> None:
         """Download a file from URL to local path."""
         logger.info(f"Downloading: {url}")
         with httpx.Client(timeout=60, follow_redirects=True) as client:
-            response = client.get(url)
-            response.raise_for_status()
-
+            r = client.get(url)
+            r.raise_for_status()
             with open(path, 'wb') as f:
-                f.write(response.content)
-
-        logger.info(f"Downloaded to: {path}")
+                f.write(r.content)
 
     def cleanup_temp(self) -> None:
         """Remove all temporary files."""

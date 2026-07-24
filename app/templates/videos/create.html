@@ -44,7 +44,55 @@
                             <option value="en">English</option>
                         </select>
                     </div>
-                    
+
+                    <!-- Visual Style Selection -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">
+                            <i class="bi bi-palette me-1"></i> Gaya Visual
+                        </label>
+                        <div class="row g-2">
+                            {% set styles = [
+                                ('real_video', '🎬 Real Video', 'Video nyata HD (stock footage)'),
+                                ('cinematic_ai', '🎨 Cinematic AI', 'Sinematik dramatis (AI)'),
+                                ('anime', '🌸 Anime', 'Gaya anime Jepang (AI)'),
+                                ('cartoon', '🖍️ Kartun', 'Gaya kartun 3D (AI)'),
+                                ('illustration', '🖼️ Ilustrasi', 'Ilustrasi digital (AI)'),
+                                ('graphic_art', '✏️ Seni Grafis', 'Poster / graphic art (AI)'),
+                                ('3d_render', '🎮 3D Render', 'Render 3D realistis (AI)'),
+                                ('oil_painting', '🖌️ Lukisan', 'Lukisan cat minyak (AI)'),
+                                ('watercolor', '💧 Cat Air', 'Lukisan cat air (AI)'),
+                                ('custom', '✨ Custom', 'Sesuai prompt kamu (AI)')
+                            ] %}
+                            {% for value, label, desc in styles %}
+                            <div class="col-6 col-md-4">
+                                <input type="radio" class="btn-check" name="visual_style"
+                                       id="style_{{ value }}" value="{{ value }}"
+                                       {% if value == 'real_video' %}checked{% endif %}>
+                                <label class="btn btn-outline-secondary w-100 py-2 text-start" for="style_{{ value }}"
+                                       title="{{ desc }}" style="font-size: 0.85rem;">
+                                    {{ label }}
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <small class="text-muted d-block mt-1" id="styleHint">
+                            <i class="bi bi-info-circle me-1"></i>Real Video = video nyata dari stock footage, cocok per kalimat narasi.
+                        </small>
+                    </div>
+
+                    <!-- Custom Prompt (optional) -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">
+                            <i class="bi bi-pencil-square me-1"></i> Custom Prompt Visual
+                            <span class="text-muted fw-normal">(opsional)</span>
+                        </label>
+                        <textarea class="form-control" name="custom_prompt" id="customPrompt" rows="2"
+                                  placeholder="Contoh: warna dominan biru, suasana malam kota futuristik, sinematik..."></textarea>
+                        <small class="text-muted">
+                            Instruksi tambahan untuk tampilan visual AI. Kosongkan untuk otomatis.
+                        </small>
+                    </div>
+
                     <!-- Auto Generate Button -->
                     <div class="mb-4">
                         <button type="button" class="btn btn-outline-primary w-100" id="generateScriptBtn">
@@ -227,5 +275,35 @@ function updatePreview() {
 
 document.getElementById('videoTitle').addEventListener('input', () => { updateCounts(); updatePreview(); });
 document.getElementById('videoScript').addEventListener('input', () => { updateCounts(); updatePreview(); });
+
+// Visual style hints
+const styleHints = {
+    'real_video': 'Real Video = video nyata dari stock footage Pexels, dicocokkan per kalimat narasi.',
+    'cinematic_ai': 'Cinematic AI = gambar sinematik dramatis dibuat AI, cocok dengan narasi.',
+    'anime': 'Anime = gaya ilustrasi anime Jepang, dibuat AI sesuai narasi.',
+    'cartoon': 'Kartun = gaya animasi kartun 3D warna-warni, dibuat AI.',
+    'illustration': 'Ilustrasi = artwork digital detail, dibuat AI.',
+    'graphic_art': 'Seni Grafis = desain poster/graphic art modern, dibuat AI.',
+    '3d_render': '3D Render = visual render 3D realistis, dibuat AI.',
+    'oil_painting': 'Lukisan = gaya lukisan cat minyak klasik, dibuat AI.',
+    'watercolor': 'Cat Air = gaya lukisan cat air lembut, dibuat AI.',
+    'custom': 'Custom = tulis prompt kamu sendiri di kolom Custom Prompt untuk kontrol penuh.'
+};
+
+document.querySelectorAll('input[name="visual_style"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        const hint = document.getElementById('styleHint');
+        hint.innerHTML = '<i class="bi bi-info-circle me-1"></i>' + (styleHints[this.value] || '');
+
+        // Emphasize custom prompt when 'custom' selected
+        const cp = document.getElementById('customPrompt');
+        if (this.value === 'custom') {
+            cp.setAttribute('placeholder', 'WAJIB diisi untuk gaya Custom: jelaskan visual yang kamu mau...');
+            cp.focus();
+        } else {
+            cp.setAttribute('placeholder', 'Contoh: warna dominan biru, suasana malam kota futuristik, sinematik...');
+        }
+    });
+});
 </script>
 {% endblock %}

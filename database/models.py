@@ -46,6 +46,11 @@ class Video(db.Model):
     hashtags = db.Column(db.Text, nullable=True)  # JSON array
     niche = db.Column(db.String(50), nullable=True)
     language = db.Column(db.String(10), default='id')
+
+    # Visual style: real_video, cinematic_ai, anime, cartoon, illustration,
+    # graphic_art, 3d_render, oil_painting, watercolor, custom
+    visual_style = db.Column(db.String(50), default='real_video')
+    custom_prompt = db.Column(db.Text, nullable=True)  # User's custom visual instruction
     
     # Files
     video_path = db.Column(db.String(500), nullable=True)
