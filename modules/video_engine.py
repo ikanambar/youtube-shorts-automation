@@ -72,20 +72,27 @@ def generate_video_task(video_id: int) -> str:
             video.duration = audio_duration
             db.session.commit()
 
-            # Step 2: Fetch stock media
-            logger.info("Step 2: Fetching stock media...")
-            niche_keywords = video.hashtags or '["nature", "cinematic"]'
-            try:
-                keywords_list = json.loads(niche_keywords)
-                search_query = ' '.join([k.replace('#', '') for k in keywords_list[:3]])
-            except (json.JSONDecodeError, TypeError):
-                search_query = video.niche or 'nature cinematic'
-
+            # Step 2: Fetch AI-generated images matching narration
+            logger.info("Step 2: Generating AI images matching narration...")
             fetcher = MediaFetcher()
             clips_needed = max(3, int(audio_duration / 6))
-            media_paths = fetcher.fetch_videos(search_query, count=clips_needed)
 
+            # Use AI image generation (Pollinations.ai) for perfect narration match
+            media_paths = fetcher.fetch_ai_images_for_script(
+                script=video.script,
+                niche=video.niche or 'facts',
+                count=clips_needed
+            )
+
+            # Fallback to stock footage if AI generation fails
             if not media_paths:
+                logger.warning("AI image generation failed, falling back to stock footage")
+                niche_keywords = video.hashtags or '["nature", "cinematic"]'
+                try:
+                    keywords_list = json.loads(niche_keywords)
+                    search_query = ' '.join([k.replace('#', '') for k in keywords_list[:3]])
+                except (json.JSONDecodeError, TypeError):
+                    search_query = video.niche or 'nature cinematic'
                 media_paths = fetcher.fetch_images(search_query, count=clips_needed)
 
             # Step 3: Create the video
