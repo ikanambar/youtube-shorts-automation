@@ -68,7 +68,7 @@ class TTSEngine:
 
     def _get_audio_duration(self, audio_path):
         try:
-            from moviepy.editor import AudioFileClip
+            from moviepy import AudioFileClip
             clip = AudioFileClip(audio_path)
             duration = clip.duration
             clip.close()

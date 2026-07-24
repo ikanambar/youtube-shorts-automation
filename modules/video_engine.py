@@ -3,7 +3,7 @@ Video Creation Engine Module
 =============================
 Creates professional YouTube Shorts videos by combining:
 - Stock footage/images from free APIs
-- AI-generated voiceover (Edge TTS - free)
+- AI-generated voiceover (gTTS - free)
 - Animated subtitles with styling
 - Background music
 - Ken Burns effect for images
@@ -18,6 +18,11 @@ from typing import List, Optional, Dict, Tuple
 from PIL import Image, ImageDraw, ImageFont
 import numpy as np
 from loguru import logger
+
+from moviepy import (
+    VideoFileClip, ImageClip, AudioFileClip, CompositeVideoClip,
+    TextClip, ColorClip, concatenate_videoclips, VideoClip
+)
 
 from config.settings import Config
 from modules.tts_engine import TTSEngine
@@ -167,11 +172,6 @@ def _compose_video(
     - Gradient overlay for text readability
     - Title card at the beginning
     """
-    from moviepy.editor import (
-        VideoFileClip, ImageClip, AudioFileClip, CompositeVideoClip,
-        TextClip, ColorClip, concatenate_videoclips
-    )
-    
     # Load audio
     audio = AudioFileClip(audio_path)
     total_duration = audio.duration
@@ -255,7 +255,6 @@ def _compose_video(
 
 def _resize_to_fill(clip, target_w: int, target_h: int):
     """Resize and crop clip to fill target dimensions."""
-    from moviepy.editor import VideoFileClip
     
     # Calculate scale to fill
     clip_aspect = clip.w / clip.h
@@ -287,7 +286,6 @@ def _resize_to_fill(clip, target_w: int, target_h: int):
 
 def _create_ken_burns_clip(image_path: str, duration: float):
     """Create a Ken Burns (pan/zoom) effect from a still image."""
-    from moviepy.editor import ImageClip
     
     # Load and resize image to be larger than frame
     img = Image.open(image_path)
@@ -323,7 +321,7 @@ def _create_ken_burns_clip(image_path: str, duration: float):
         
         return np.array(pil_img)
     
-    from moviepy.editor import VideoClip
+    from moviepy import VideoClip
     clip = VideoClip(make_frame, duration=duration)
     
     return clip
@@ -331,7 +329,6 @@ def _create_ken_burns_clip(image_path: str, duration: float):
 
 def _create_gradient_overlay(duration: float):
     """Create a semi-transparent gradient overlay for subtitle readability."""
-    from moviepy.editor import ImageClip
     
     # Create gradient - dark at bottom, transparent at top
     gradient = np.zeros((HEIGHT, WIDTH, 4), dtype=np.uint8)
@@ -367,7 +364,6 @@ def _create_animated_subtitles(word_timings: List[Dict], total_duration: float) 
     
     Groups words into lines and highlights the current word.
     """
-    from moviepy.editor import TextClip
     
     if not word_timings:
         return []
@@ -441,8 +437,8 @@ def _generate_thumbnail(media_path: Optional[str], title: str, output_path: str)
                 thumb.paste(bg)
                 draw = ImageDraw.Draw(thumb)
             elif media_path.endswith(('.mp4', '.mov', '.avi')):
-                from moviepy.editor import VideoFileClip
-                clip = VideoFileClip(media_path)
+                from moviepy import VideoFileClip as VFC
+                clip = VFC(media_path)
                 frame = clip.get_frame(0)
                 clip.close()
                 bg = Image.fromarray(frame)
