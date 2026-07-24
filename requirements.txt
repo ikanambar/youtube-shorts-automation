@@ -10,22 +10,25 @@ Flask-Login==0.6.3
 Flask-APScheduler==1.13.1
 
 # Video Processing
-moviepy==1.0.3
-Pillow==10.1.0
-numpy==1.26.2
+moviepy>=1.0.3
+Pillow>=10.1.0
+numpy>=1.26.2
 
-# Text-to-Speech (FREE - Microsoft Edge TTS)
-edge-tts==6.1.9
+# Text-to-Speech (FREE - Google TTS)
+gTTS>=2.4.0
 
-# HTTP client (used for Pexels, Pixabay, and YouTube API)
-httpx==0.25.2
-requests==2.31.0
+# Stock Media APIs (FREE)
+requests>=2.31.0
 
 # Scheduler
 APScheduler==3.10.4
 
 # Utilities
 python-dotenv==1.0.0
+celery==5.3.4
+redis==5.0.1
+APScheduler==3.10.4
+pydantic>=2.5.2
 loguru==0.7.2
 
 # Optional - AI script generation (not required; app works without it)
