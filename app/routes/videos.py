@@ -67,6 +67,8 @@ def create():
         include_music = request.form.get('include_music', 'on') == 'on'
         include_subtitles = request.form.get('include_subtitles', 'on') == 'on'
         language = request.form.get('language', 'id')
+        visual_style = request.form.get('visual_style', 'real_video')
+        custom_prompt = request.form.get('custom_prompt', '').strip()
         
         if not title:
             flash('Judul video wajib diisi.', 'danger')
@@ -89,6 +91,8 @@ def create():
             language=language,
             voice=voice,
             hashtags=hashtags,
+            visual_style=visual_style,
+            custom_prompt=custom_prompt,
             description=f"{title}\n\n{' '.join(niche_data['hashtags'])}",
             status='draft'
         )
